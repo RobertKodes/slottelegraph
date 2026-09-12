@@ -111,8 +111,6 @@ export class TelegraphDesk {
   live = false
   degraded = false
   slot: number | null = null
-  lastClickFailed = false
-
   private lastSlot = -1
   private pending = false
   private extras = 0
@@ -210,7 +208,6 @@ export class TelegraphDesk {
     this.tapeHead += 1
     this.armTarget = 1
     this.armHold = ARM_HOLD
-    this.lastClickFailed = line.failed
     this.clickQueue.push(line.failed)
     if (line.failed) this.lingerUntil = now + LINGER_FAIL
     this.spawnSparks()
@@ -250,129 +247,135 @@ export class TelegraphDesk {
 
   private layout(w: number, h: number): Layout {
     const narrow = w < 740
-    const deskY = h * (narrow ? 0.34 : 0.3)
-    const blotW = w * (narrow ? 0.92 : 0.86)
-    const blotH = h * (narrow ? 0.5 : 0.52)
+    const chrome = narrow ? Math.min(236, h * 0.3) : 8
+    const deskY = h * (narrow ? 0.28 : 0.24)
+    const workH = Math.max(180, h - deskY - chrome)
+    const blotW = w * (narrow ? 0.9 : 0.74)
+    const blotH = Math.min(workH * 0.78, h * (narrow ? 0.36 : 0.4))
     const blotX = (w - blotW) / 2
-    const blotY = deskY + h * 0.06
-    const s = Math.min(w, h) * (narrow ? 0.11 : 0.095)
-    const sounderX = blotX + blotW * (narrow ? 0.22 : 0.2)
-    const sounderY = blotY + blotH * 0.42
-    const reelX = blotX + blotW * (narrow ? 0.4 : 0.38)
-    const reelY = sounderY - s * 0.15
+    const blotY = deskY + (narrow ? 22 : 36)
+    const s = Math.min(w, h) * (narrow ? 0.16 : 0.168)
+    const sounderX = blotX + s * (narrow ? 1.35 : 1.45)
+    const sounderY = blotY + blotH * (narrow ? 0.36 : 0.5)
+    const reelX = narrow ? blotX + s * 0.72 : sounderX + s * 1.72
+    const reelY = narrow ? blotY + blotH * 0.74 : sounderY - s * 0.05
     return {
       w,
       h,
       deskY,
       blot: { x: blotX, y: blotY, w: blotW, h: blotH },
       sounder: { x: sounderX, y: sounderY, s },
-      reel: { x: reelX, y: reelY, r: s * 0.42 },
-      inker: { x: reelX + s * 0.85, y: reelY + s * 0.12 },
+      reel: { x: reelX, y: reelY, r: s * (narrow ? 0.4 : 0.48) },
+      inker: { x: reelX + s * (narrow ? 0.7 : 0.9), y: reelY + s * 0.06 },
       lamp: {
-        x: blotX + blotW * (narrow ? 0.82 : 0.84),
-        y: deskY + h * 0.02,
-        s: s * 1.15,
+        x: blotX + blotW * (narrow ? 0.82 : 0.9),
+        y: deskY - s * (narrow ? 0.05 : 0.15),
+        s: s * (narrow ? 1.05 : 1.25),
       },
-      key: { x: sounderX - s * 0.15, y: sounderY + s * 1.15, s: s * 0.85 },
-      tapeY: reelY + s * 0.08,
-      tapeH: s * 0.52,
+      key: {
+        x: sounderX + (narrow ? s * 1.55 : -s * 0.1),
+        y: sounderY + (narrow ? s * 0.15 : s * 1.28),
+        s: s * (narrow ? 0.82 : 0.95),
+      },
+      tapeY: reelY - s * 0.08,
+      tapeH: s * (narrow ? 0.46 : 0.5),
     }
   }
 
   private drawRoom(ctx: CanvasRenderingContext2D, L: Layout) {
     const { w, h, deskY } = L
-    const g = ctx.createLinearGradient(0, 0, 0, h)
-    g.addColorStop(0, '#0A0C0A')
-    g.addColorStop(0.45, PALETTE.pitch)
-    g.addColorStop(1, '#0E0C08')
+    const g = ctx.createLinearGradient(0, 0, 0, deskY)
+    g.addColorStop(0, '#070806')
+    g.addColorStop(1, PALETTE.pitch)
     ctx.fillStyle = g
     ctx.fillRect(0, 0, w, h)
 
-    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.55)
-    ctx.fillRect(0, deskY - 18, w, 22)
+    const rail = 28
+    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.42)
+    ctx.fillRect(0, deskY - rail, w, rail)
     const grain = mulberry32(11)
-    ctx.strokeStyle = rgba(PALETTE.oak, 0.18)
-    ctx.lineWidth = 1
-    for (let i = 0; i < 14; i++) {
-      const y = deskY - 16 + i * 1.3
+    ctx.strokeStyle = rgba(PALETTE.oak, 0.35)
+    ctx.lineWidth = 1.2
+    for (let i = 0; i < 18; i++) {
+      const y = deskY - rail + 2 + i * 1.45
       ctx.beginPath()
       ctx.moveTo(0, y)
-      for (let x = 0; x < w; x += 28) {
-        ctx.lineTo(x, y + (grain() - 0.5) * 1.6)
-      }
+      for (let x = 0; x < w; x += 26) ctx.lineTo(x, y + (grain() - 0.5) * 1.8)
       ctx.stroke()
     }
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.35)
+    ctx.fillRect(0, deskY - 4, w, 4)
   }
 
   private drawDesk(ctx: CanvasRenderingContext2D, L: Layout) {
     const { w, h, deskY } = L
     const top = ctx.createLinearGradient(0, deskY, 0, h)
-    top.addColorStop(0, mix(PALETTE.oak, PALETTE.amber, 0.12))
-    top.addColorStop(0.15, PALETTE.oak)
-    top.addColorStop(1, mix(PALETTE.oak, PALETTE.pitch, 0.45))
+    top.addColorStop(0, mix(PALETTE.oak, PALETTE.amber, 0.22))
+    top.addColorStop(0.12, mix(PALETTE.oak, PALETTE.amber, 0.08))
+    top.addColorStop(0.55, PALETTE.oak)
+    top.addColorStop(1, mix(PALETTE.oak, PALETTE.pitch, 0.38))
     ctx.fillStyle = top
     ctx.fillRect(0, deskY, w, h - deskY)
 
     const rng = mulberry32(42)
-    ctx.strokeStyle = rgba(PALETTE.pitch, 0.22)
-    ctx.lineWidth = 1
-    for (let i = 0; i < 36; i++) {
-      const y = deskY + 8 + rng() * (h - deskY)
+    for (let i = 0; i < 48; i++) {
+      const y = deskY + 10 + rng() * (h - deskY - 12)
+      ctx.strokeStyle = rgba(PALETTE.pitch, 0.16 + rng() * 0.16)
+      ctx.lineWidth = 1 + rng()
       ctx.beginPath()
       ctx.moveTo(0, y)
-      for (let x = 0; x < w; x += 40) {
-        ctx.lineTo(x, y + (rng() - 0.5) * 3)
-      }
+      for (let x = 0; x < w; x += 36) ctx.lineTo(x, y + (rng() - 0.5) * 4)
       ctx.stroke()
     }
 
-    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.5)
-    ctx.fillRect(0, h - 18, w, 18)
-    ctx.fillStyle = rgba(PALETTE.pitch, 0.35)
-    ctx.fillRect(0, deskY, w, 4)
+    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.55)
+    ctx.fillRect(0, h - 22, w, 22)
+    ctx.fillStyle = rgba(PALETTE.pitch, 0.4)
+    ctx.fillRect(0, deskY, w, 5)
   }
 
   private drawBlotter(ctx: CanvasRenderingContext2D, L: Layout) {
     const { x, y, w, h } = L.blot
     ctx.save()
-    roundRect(ctx, x, y, w, h, 10)
-    const felt = ctx.createLinearGradient(x, y, x + w * 0.2, y + h)
-    felt.addColorStop(0, mix(PALETTE.baize, PALETTE.amber, 0.08))
-    felt.addColorStop(0.5, PALETTE.baize)
-    felt.addColorStop(1, mix(PALETTE.baize, PALETTE.pitch, 0.28))
+    ctx.fillStyle = rgba(PALETTE.pitch, 0.28)
+    roundRect(ctx, x + 8, y + 10, w, h, 14)
+    ctx.fill()
+
+    roundRect(ctx, x, y, w, h, 14)
+    const felt = ctx.createLinearGradient(x, y, x + w * 0.15, y + h)
+    felt.addColorStop(0, mix(PALETTE.baize, PALETTE.amber, 0.16))
+    felt.addColorStop(0.4, mix(PALETTE.baize, PALETTE.ivory, 0.06))
+    felt.addColorStop(1, mix(PALETTE.baize, PALETTE.pitch, 0.22))
     ctx.fillStyle = felt
     ctx.fill()
 
     const rng = mulberry32(99)
-    ctx.globalAlpha = 0.07
-    for (let i = 0; i < 220; i++) {
-      ctx.fillStyle = rng() > 0.5 ? PALETTE.ivory : PALETTE.pitch
-      ctx.fillRect(x + rng() * w, y + rng() * h, 1.2, 1.2)
+    for (let i = 0; i < 420; i++) {
+      ctx.fillStyle = rng() > 0.55 ? rgba(PALETTE.ivory, 0.07) : rgba(PALETTE.pitch, 0.1)
+      ctx.fillRect(x + rng() * w, y + rng() * h, 1.6, 1.6)
     }
-    ctx.globalAlpha = 1
 
-    ctx.strokeStyle = rgba(PALETTE.brass, 0.35)
-    ctx.lineWidth = 1.2
-    ctx.setLineDash([5, 4])
-    roundRect(ctx, x + 7, y + 7, w - 14, h - 14, 7)
+    ctx.strokeStyle = rgba(PALETTE.brass, 0.45)
+    ctx.lineWidth = 1.4
+    ctx.setLineDash([6, 5])
+    roundRect(ctx, x + 9, y + 9, w - 18, h - 18, 9)
     ctx.stroke()
     ctx.setLineDash([])
 
-    ctx.fillStyle = rgba(INK, 0.12)
+    ctx.fillStyle = rgba(INK, 0.16)
     ctx.beginPath()
-    ctx.ellipse(x + w * 0.62, y + h * 0.7, w * 0.12, h * 0.08, -0.3, 0, Math.PI * 2)
+    ctx.ellipse(x + w * 0.68, y + h * 0.72, w * 0.1, h * 0.07, -0.35, 0, Math.PI * 2)
     ctx.fill()
-
     ctx.restore()
   }
 
   private drawLampGlow(ctx: CanvasRenderingContext2D, L: Layout) {
-    const { x, y } = L.lamp
-    const heat = 0.42 + this.fee * 0.48 + this.flicker
-    const r = L.lamp.s * (6.2 + this.fee * 2.4)
-    const g = ctx.createRadialGradient(x, y + 20, 8, x, y + 40, r)
-    g.addColorStop(0, rgba(PALETTE.amber, 0.42 * heat))
-    g.addColorStop(0.35, rgba(PALETTE.amber, 0.16 * heat))
+    const { x, y, s } = L.lamp
+    const heat = 0.5 + this.fee * 0.5 + this.flicker
+    const r = s * (7.4 + this.fee * 3.2)
+    const g = ctx.createRadialGradient(x, y + s * 0.7, 6, x - s * 0.4, y + s * 1.4, r)
+    g.addColorStop(0, rgba(PALETTE.amber, 0.55 * heat))
+    g.addColorStop(0.28, rgba(PALETTE.amber, 0.22 * heat))
     g.addColorStop(1, rgba(PALETTE.amber, 0))
     ctx.fillStyle = g
     ctx.fillRect(0, 0, L.w, L.h)
@@ -380,32 +383,50 @@ export class TelegraphDesk {
 
   private drawKey(ctx: CanvasRenderingContext2D, L: Layout) {
     const { x, y, s } = L.key
-    const down = this.frozen ? 1 : this.arm * 0.35
+    const down = this.frozen ? 1 : this.arm * 0.4
     ctx.save()
     ctx.translate(x, y)
-    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.15)
-    roundRect(ctx, -s * 0.85, -s * 0.12, s * 1.7, s * 0.55, 4)
+
+    ctx.fillStyle = rgba(PALETTE.pitch, 0.3)
+    ctx.beginPath()
+    ctx.ellipse(0, s * 0.42, s * 1.05, s * 0.2, 0, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = rgba(PALETTE.brass, 0.8)
-    ctx.fillRect(-s * 0.7, s * 0.02, s * 0.22, s * 0.16)
-    ctx.fillRect(s * 0.48, s * 0.02, s * 0.22, s * 0.16)
+
+    roundRect(ctx, -s * 1.05, -s * 0.08, s * 2.1, s * 0.62, 6)
+    const wood = ctx.createLinearGradient(0, -s * 0.08, 0, s * 0.5)
+    wood.addColorStop(0, mix(PALETTE.oak, PALETTE.amber, 0.18))
+    wood.addColorStop(1, mix(PALETTE.oak, PALETTE.pitch, 0.2))
+    ctx.fillStyle = wood
+    ctx.fill()
+    ctx.strokeStyle = rgba(PALETTE.pitch, 0.35)
+    ctx.stroke()
+
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.12)
+    ctx.fillRect(-s * 0.82, s * 0.12, s * 0.28, s * 0.18)
+    ctx.fillRect(s * 0.42, s * 0.12, s * 0.28, s * 0.18)
 
     ctx.save()
-    ctx.translate(-s * 0.15, s * 0.08 + down * s * 0.12)
-    ctx.rotate(-0.12 + down * 0.16)
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.15)
-    ctx.fillRect(-s * 0.05, -s * 0.08, s * 1.05, s * 0.1)
-    ctx.beginPath()
-    ctx.arc(s * 0.95, -s * 0.04, s * 0.14, 0, Math.PI * 2)
-    ctx.fillStyle = mix(PALETTE.oak, PALETTE.amber, 0.2)
+    ctx.translate(-s * 0.28, s * 0.12 + down * s * 0.14)
+    ctx.rotate(-0.18 + down * 0.22)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.amber, 0.12)
+    roundRect(ctx, -s * 0.08, -s * 0.1, s * 1.35, s * 0.16, 3)
     ctx.fill()
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.35)
+    ctx.fillRect(-s * 0.08, -s * 0.1, s * 1.35, 2)
+    ctx.beginPath()
+    ctx.arc(s * 1.2, -s * 0.02, s * 0.18, 0, Math.PI * 2)
+    ctx.fillStyle = mix(PALETTE.pitch, PALETTE.oak, 0.15)
+    ctx.fill()
+    ctx.strokeStyle = rgba(PALETTE.brass, 0.5)
+    ctx.lineWidth = 2
+    ctx.stroke()
     ctx.restore()
 
-    ctx.strokeStyle = rgba(PALETTE.brass, 0.45)
-    ctx.lineWidth = 1.4
+    ctx.strokeStyle = rgba(PALETTE.brass, 0.55)
+    ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.moveTo(s * 0.55, s * 0.1)
-    ctx.quadraticCurveTo(s * 1.4, -s * 0.8, L.sounder.x - x, L.sounder.y - y + s * 0.2)
+    ctx.moveTo(s * 0.55, s * 0.18)
+    ctx.quadraticCurveTo(s * 1.6, -s * 0.55, L.sounder.x - x + s * 0.2, L.sounder.y - y + s * 0.15)
     ctx.stroke()
     ctx.restore()
   }
@@ -415,56 +436,84 @@ export class TelegraphDesk {
     ctx.save()
     ctx.translate(x, y)
 
-    ctx.fillStyle = rgba(PALETTE.pitch, 0.35)
+    ctx.fillStyle = rgba(PALETTE.pitch, 0.4)
     ctx.beginPath()
-    ctx.ellipse(0, s * 0.72, s * 1.15, s * 0.22, 0, 0, Math.PI * 2)
+    ctx.ellipse(s * 0.08, s * 0.95, s * 1.45, s * 0.28, 0, 0, Math.PI * 2)
     ctx.fill()
 
-    roundRect(ctx, -s * 1.05, s * 0.18, s * 2.1, s * 0.42, 5)
-    const base = ctx.createLinearGradient(-s, s * 0.18, s, s * 0.6)
-    base.addColorStop(0, mix(PALETTE.brass, PALETTE.oak, 0.25))
-    base.addColorStop(0.5, PALETTE.brass)
-    base.addColorStop(1, mix(PALETTE.brass, PALETTE.pitch, 0.2))
-    ctx.fillStyle = base
+    const boxW = s * 2.35
+    const boxH = s * 0.72
+    const boxX = -boxW * 0.5
+    const boxY = s * 0.22
+    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.12)
+    ctx.beginPath()
+    ctx.moveTo(boxX + 8, boxY + boxH)
+    ctx.lineTo(boxX + boxW + 10, boxY + boxH - 8)
+    ctx.lineTo(boxX + boxW + 10, boxY - 6)
+    ctx.lineTo(boxX + 8, boxY)
+    ctx.closePath()
     ctx.fill()
 
-    ctx.fillStyle = rgba(PALETTE.pitch, 0.25)
-    ctx.fillRect(-s * 0.92, s * 0.28, s * 1.84, 2)
+    roundRect(ctx, boxX, boxY, boxW, boxH, 5)
+    const wood = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH)
+    wood.addColorStop(0, mix(PALETTE.oak, PALETTE.amber, 0.2))
+    wood.addColorStop(0.45, PALETTE.oak)
+    wood.addColorStop(1, mix(PALETTE.oak, PALETTE.pitch, 0.25))
+    ctx.fillStyle = wood
+    ctx.fill()
+    ctx.strokeStyle = rgba(PALETTE.pitch, 0.4)
+    ctx.lineWidth = 1.2
+    ctx.stroke()
 
-    this.coil(ctx, -s * 0.38, s * 0.05, s * 0.28, s * 0.42)
-    this.coil(ctx, s * 0.38, s * 0.05, s * 0.28, s * 0.42)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.15)
+    ctx.fillRect(boxX + 6, boxY + 6, 10, boxH - 12)
+    ctx.fillRect(boxX + boxW - 16, boxY + 6, 10, boxH - 12)
 
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.2)
-    ctx.fillRect(-s * 0.08, -s * 0.12, s * 0.16, s * 0.28)
-    ctx.fillRect(-s * 0.7, s * 0.32, s * 0.18, s * 0.1)
+    ctx.fillStyle = rgba(INK, 0.78)
+    ctx.font = `${Math.max(10, s * 0.17)}px "IM Fell English SC", "Iowan Old Style", serif`
+    ctx.textAlign = 'center'
+    ctx.fillText(this.degraded ? 'WIRE LOOSE' : this.live ? 'NIGHT WIRE' : 'WAIT WIRE', 0, boxY + boxH * 0.62)
+
+    const bed = ctx.createLinearGradient(-s, boxY - s * 0.08, s, boxY + s * 0.12)
+    bed.addColorStop(0, mix(PALETTE.brass, PALETTE.oak, 0.28))
+    bed.addColorStop(0.5, mix(PALETTE.brass, PALETTE.ivory, 0.12))
+    bed.addColorStop(1, mix(PALETTE.brass, PALETTE.pitch, 0.18))
+    ctx.fillStyle = bed
+    roundRect(ctx, -s * 1.05, boxY - s * 0.1, s * 2.1, s * 0.2, 3)
+    ctx.fill()
+
+    this.coil(ctx, -s * 0.42, -s * 0.42, s * 0.36, s * 0.62)
+    this.coil(ctx, s * 0.42, -s * 0.42, s * 0.36, s * 0.62)
+
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.18)
+    ctx.fillRect(-s * 0.1, -s * 0.22, s * 0.2, s * 0.38)
+    ctx.fillRect(s * 0.78, boxY - s * 0.22, s * 0.16, s * 0.22)
 
     const drop = this.arm
     ctx.save()
-    ctx.translate(-s * 0.02, -s * 0.02)
-    ctx.rotate(-0.18 + drop * 0.28)
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.amber, 0.12)
-    ctx.fillRect(-s * 0.95, -s * 0.07, s * 1.85, s * 0.13)
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.35)
-    ctx.fillRect(-s * 0.95, -s * 0.07, s * 1.85, 2)
-    ctx.beginPath()
-    ctx.arc(s * 0.82, 0, s * 0.09, 0, Math.PI * 2)
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.pitch, 0.15)
+    ctx.translate(-s * 0.02, -s * 0.18)
+    ctx.rotate(-0.28 + drop * 0.42)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.pitch, 0.08)
+    roundRect(ctx, -s * 1.15, -s * 0.1, s * 2.25, s * 0.2, 4)
     ctx.fill()
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.4)
+    ctx.fillRect(-s * 1.15, -s * 0.1, s * 2.25, 3)
+    ctx.beginPath()
+    ctx.arc(s * 1.02, 0, s * 0.13, 0, Math.PI * 2)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.2)
+    ctx.fill()
+    ctx.fillStyle = mix(PALETTE.pitch, PALETTE.oak, 0.2)
+    ctx.fillRect(s * 0.72, s * 0.02, s * 0.22, s * 0.12)
     ctx.restore()
 
     if (this.frozen) {
-      ctx.fillStyle = rgba(PALETTE.amber, 0.85)
+      ctx.fillStyle = rgba(PALETTE.amber, 0.9)
       ctx.beginPath()
-      ctx.arc(s * 0.92, s * 0.02, s * 0.08, 0, Math.PI * 2)
+      ctx.arc(s * 1.05, -s * 0.28, s * 0.1, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    ctx.fillStyle = rgba(INK, 0.7)
-    ctx.font = `${Math.max(8, s * 0.16)}px "IM Fell English SC", "Iowan Old Style", serif`
-    ctx.textAlign = 'center'
-    ctx.fillText(this.degraded ? 'WIRE LOOSE' : this.live ? 'NIGHT WIRE' : 'WAIT WIRE', 0, s * 0.48)
-
-    const ozone = this.fee * (0.12 + Math.abs(Math.sin(now * 0.004)) * 0.08)
+    const ozone = this.fee * (0.14 + Math.abs(Math.sin(now * 0.004)) * 0.1)
     if (ozone > 0.02 && !this.reduced) {
       ctx.fillStyle = rgba(PALETTE.amber, ozone)
       ctx.beginPath()
@@ -477,19 +526,24 @@ export class TelegraphDesk {
   private coil(ctx: CanvasRenderingContext2D, x: number, y: number, rw: number, rh: number) {
     ctx.save()
     ctx.translate(x, y)
-    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.3)
-    ctx.fillRect(-rw * 0.22, rh * 0.15, rw * 0.44, rh * 0.7)
-    for (let i = 0; i < 9; i++) {
-      const t = i / 8
+    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.25)
+    ctx.fillRect(-rw * 0.2, rh * 0.12, rw * 0.4, rh * 0.78)
+    const copper = mix(PALETTE.brass, PALETTE.oak, 0.28)
+    for (let i = 0; i < 12; i++) {
+      const t = i / 11
       ctx.beginPath()
-      ctx.ellipse(0, rh * 0.2 + t * rh * 0.55, rw, rh * 0.11, 0, 0, Math.PI * 2)
-      ctx.strokeStyle = mix(PALETTE.brass, PALETTE.oak, 0.15 + t * 0.2)
-      ctx.lineWidth = 2.1
+      ctx.ellipse(0, rh * 0.16 + t * rh * 0.62, rw, rh * 0.09, 0, 0, Math.PI * 2)
+      ctx.strokeStyle = mix(copper, PALETTE.pitch, t * 0.18)
+      ctx.lineWidth = 2.6
       ctx.stroke()
     }
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.15)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.2)
     ctx.beginPath()
-    ctx.ellipse(0, rh * 0.18, rw * 0.55, rh * 0.08, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, rh * 0.14, rw * 0.52, rh * 0.07, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.2)
+    ctx.beginPath()
+    ctx.ellipse(0, rh * 0.8, rw * 0.52, rh * 0.07, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   }
@@ -521,7 +575,7 @@ export class TelegraphDesk {
     ctx.rect(startX + 8, tapeY - 2, endX - startX - 6, tapeH + 10)
     ctx.clip()
 
-    const spacing = lerp(118, 78, this.fee)
+    const spacing = lerp(104, 70, this.fee)
     for (const line of this.lines) {
       const x = inker.x + 8 + (this.scroll - line.tick - 1) * spacing
       if (x > endX + 20 || x < startX - 10) continue
@@ -529,25 +583,44 @@ export class TelegraphDesk {
     }
     ctx.restore()
 
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.1)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(startX + 10, tapeY + 2, endX - startX - 16, 5)
+    ctx.clip()
+    ctx.fillStyle = rgba(INK, 0.22)
+    for (let hx = startX + 14; hx < endX; hx += 9) {
+      ctx.beginPath()
+      ctx.arc(hx, tapeY + 4.5, 1.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.08)
     ctx.beginPath()
     ctx.arc(reel.x, reel.y, reel.r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = mix(PALETTE.brass, PALETTE.ivory, 0.25)
+    ctx.strokeStyle = mix(PALETTE.ivory, PALETTE.amber, 0.25)
+    ctx.lineWidth = 7
+    ctx.beginPath()
+    ctx.arc(reel.x, reel.y, reel.r * 0.7, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.strokeStyle = mix(PALETTE.brass, PALETTE.ivory, 0.3)
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.arc(reel.x, reel.y, reel.r * 0.72, 0, Math.PI * 2)
+    ctx.arc(reel.x, reel.y, reel.r * 0.82, 0, Math.PI * 2)
     ctx.stroke()
-    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.2)
+    ctx.fillStyle = mix(PALETTE.oak, PALETTE.pitch, 0.15)
     ctx.beginPath()
-    ctx.arc(reel.x, reel.y, reel.r * 0.18, 0, Math.PI * 2)
+    ctx.arc(reel.x, reel.y, reel.r * 0.16, 0, Math.PI * 2)
     ctx.fill()
 
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.pitch, 0.1)
-    roundRect(ctx, inker.x - 10, inker.y - tapeH * 0.7, 22, tapeH * 1.15, 3)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.pitch, 0.08)
+    roundRect(ctx, inker.x - 14, inker.y - tapeH * 0.85, 28, tapeH * 1.35, 4)
     ctx.fill()
-    ctx.fillStyle = rgba(INK, 0.55 + this.arm * 0.3)
-    ctx.fillRect(inker.x - 6, tapeY + 4, 12, 3)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.2)
+    ctx.fillRect(inker.x - 14, inker.y - tapeH * 0.85, 28, 4)
+    ctx.fillStyle = rgba(INK, 0.6 + this.arm * 0.35)
+    ctx.fillRect(inker.x - 8, tapeY + 3, 16, 4)
 
     ctx.restore()
   }
@@ -628,43 +701,54 @@ export class TelegraphDesk {
 
   private drawLamp(ctx: CanvasRenderingContext2D, L: Layout) {
     const { x, y, s } = L.lamp
-    const heat = 0.5 + this.fee * 0.45 + this.flicker
+    const heat = 0.55 + this.fee * 0.45 + this.flicker
     ctx.save()
     ctx.translate(x, y)
 
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.2)
+    ctx.fillStyle = rgba(PALETTE.pitch, 0.35)
     ctx.beginPath()
-    ctx.moveTo(-s * 0.42, s * 1.05)
-    ctx.lineTo(s * 0.42, s * 1.05)
-    ctx.lineTo(s * 0.28, s * 1.35)
-    ctx.lineTo(-s * 0.28, s * 1.35)
-    ctx.closePath()
+    ctx.ellipse(0, s * 1.55, s * 0.42, s * 0.12, 0, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.amber, 0.15)
-    ctx.fillRect(-s * 0.34, s * 0.92, s * 0.68, s * 0.14)
 
-    ctx.fillStyle = rgba(PALETTE.ivory, 0.14 + heat * 0.12)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.oak, 0.18)
     ctx.beginPath()
-    ctx.moveTo(-s * 0.18, s * 0.92)
-    ctx.quadraticCurveTo(-s * 0.32, s * 0.35, -s * 0.14, 0)
-    ctx.lineTo(s * 0.14, 0)
-    ctx.quadraticCurveTo(s * 0.32, s * 0.35, s * 0.18, s * 0.92)
+    ctx.moveTo(-s * 0.38, s * 1.12)
+    ctx.quadraticCurveTo(-s * 0.52, s * 1.38, -s * 0.22, s * 1.52)
+    ctx.lineTo(s * 0.22, s * 1.52)
+    ctx.quadraticCurveTo(s * 0.52, s * 1.38, s * 0.38, s * 1.12)
     ctx.closePath()
     ctx.fill()
-    ctx.strokeStyle = rgba(PALETTE.ivory, 0.28)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.amber, 0.2)
+    ctx.fillRect(-s * 0.3, s * 1.02, s * 0.6, s * 0.14)
+
+    ctx.fillStyle = rgba(PALETTE.ivory, 0.1 + heat * 0.16)
+    ctx.beginPath()
+    ctx.moveTo(-s * 0.16, s * 1.04)
+    ctx.quadraticCurveTo(-s * 0.3, s * 0.45, -s * 0.13, s * 0.04)
+    ctx.lineTo(s * 0.13, s * 0.04)
+    ctx.quadraticCurveTo(s * 0.3, s * 0.45, s * 0.16, s * 1.04)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = rgba(PALETTE.ivory, 0.38)
+    ctx.lineWidth = 1.4
+    ctx.stroke()
+    ctx.strokeStyle = rgba(PALETTE.ivory, 0.2)
+    ctx.beginPath()
+    ctx.moveTo(-s * 0.08, s * 0.12)
+    ctx.quadraticCurveTo(-s * 0.18, s * 0.5, -s * 0.1, s * 0.96)
     ctx.stroke()
 
-    ctx.fillStyle = rgba(PALETTE.amber, 0.35 + heat * 0.45)
+    ctx.fillStyle = rgba(PALETTE.amber, 0.4 + heat * 0.5)
     ctx.beginPath()
-    ctx.ellipse(0, s * 0.55, s * 0.09, s * 0.22, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, s * 0.62, s * 0.1 * (1 + this.fee * 0.3), s * 0.26 * (1 + this.fee * 0.25), 0, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = rgba(PALETTE.ivory, 0.55 + heat * 0.3)
+    ctx.fillStyle = rgba(PALETTE.ivory, 0.6 + heat * 0.3)
     ctx.beginPath()
-    ctx.ellipse(0, s * 0.5, s * 0.04, s * 0.12, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, s * 0.56, s * 0.045, s * 0.14, 0, 0, Math.PI * 2)
     ctx.fill()
 
-    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.2)
-    ctx.fillRect(-s * 0.2, -s * 0.06, s * 0.4, s * 0.08)
+    ctx.fillStyle = mix(PALETTE.brass, PALETTE.ivory, 0.22)
+    ctx.fillRect(-s * 0.18, -s * 0.02, s * 0.36, s * 0.1)
     ctx.restore()
   }
 
