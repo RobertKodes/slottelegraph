@@ -1,0 +1,340 @@
+:root {
+  color-scheme: dark;
+  --pitch: #121610;
+  --oak: #5c3a22;
+  --baize: #234033;
+  --brass: #b08a42;
+  --amber: #e6a23c;
+  --ivory: #e8d5b0;
+  --ink: #1a1610;
+  --ash: #6e6450;
+  font-family: 'IM Fell English SC', 'Iowan Old Style', Palatino, serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  background: var(--pitch);
+  color: var(--ivory);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--pitch);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.office {
+  position: relative;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+.desk {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: manipulation;
+}
+
+.mast {
+  position: absolute;
+  top: 0.85rem;
+  left: 1rem;
+  z-index: 2;
+  max-width: min(30rem, calc(100% - 2rem));
+  pointer-events: none;
+}
+
+.kicker {
+  margin: 0;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+h1 {
+  margin: 0.12rem 0 0;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 5vw, 3.15rem);
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  color: var(--amber);
+}
+
+.lede {
+  margin: 0.3rem 0 0;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--ivory) 68%, var(--pitch));
+}
+
+.plate {
+  position: absolute;
+  z-index: 2;
+  left: 0.85rem;
+  bottom: 0.85rem;
+  width: min(18.4rem, calc(100% - 1.7rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.58rem;
+  padding: 0.76rem 0.82rem 0.7rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--oak) 88%, var(--amber)) 0%, #2a1a10 100%);
+  border: 2px solid color-mix(in srgb, var(--brass) 60%, var(--pitch));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--brass) 30%, transparent),
+    inset 0 0 0 5px color-mix(in srgb, var(--baize) 55%, var(--pitch)),
+    0 16px 32px rgba(0, 0, 0, 0.48);
+}
+
+.plate-mark {
+  margin: 0;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brass) 80%, var(--ivory));
+}
+
+.break-key {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  background: color-mix(in srgb, var(--pitch) 55%, var(--oak));
+  border: 1px solid color-mix(in srgb, var(--brass) 45%, var(--pitch));
+  cursor: pointer;
+}
+
+.break-key.on {
+  background: color-mix(in srgb, var(--oak) 70%, var(--amber));
+}
+
+.knife {
+  position: relative;
+  width: 2.6rem;
+  height: 1.35rem;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--baize) 70%, var(--pitch));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brass) 35%, transparent);
+}
+
+.knife i {
+  position: absolute;
+  left: 0.18rem;
+  top: 0.28rem;
+  width: 1.55rem;
+  height: 0.72rem;
+  background: var(--brass);
+  transform-origin: 0.18rem 50%;
+  transform: rotate(-28deg);
+  clip-path: polygon(0 20%, 78% 0, 100% 50%, 78% 100%, 0 80%);
+}
+
+.break-key.on .knife i {
+  left: 0.7rem;
+  transform: rotate(28deg);
+}
+
+.break-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--amber);
+}
+
+.break-copy em {
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-style: normal;
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ivory);
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.read dt {
+  margin: 0;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brass) 75%, var(--ivory));
+}
+
+.read dd {
+  margin: 0.12rem 0 0;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--ivory);
+}
+
+.read.live dd {
+  color: var(--amber);
+}
+
+.read em {
+  margin-left: 0.15rem;
+  font-style: normal;
+  font-size: 0.58rem;
+  color: var(--brass);
+}
+
+.heat {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.heat i {
+  display: block;
+  height: 0.38rem;
+  background: color-mix(in srgb, var(--pitch) 70%, var(--baize));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brass) 25%, transparent);
+}
+
+.heat b {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--baize), var(--amber));
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ivory) 75%, var(--pitch));
+}
+
+.legend i {
+  display: inline-block;
+  width: 0.48rem;
+  height: 0.48rem;
+  margin-right: 0.28rem;
+  vertical-align: -0.06rem;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pitch) 40%, transparent);
+}
+
+.legend i.fail {
+  background: color-mix(in srgb, var(--oak) 55%, var(--ink));
+  clip-path: polygon(0 0, 100% 15%, 88% 100%, 8% 100%);
+}
+
+.plate-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ear {
+  align-self: flex-start;
+  padding: 0.18rem 0.42rem;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--brass) 40%, transparent);
+  color: var(--brass);
+  cursor: pointer;
+}
+
+.ear.on {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+}
+
+.hint {
+  margin: 0;
+  font-family: 'Cutive Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--ivory) 62%, var(--pitch));
+}
+
+@media (max-width: 720px) {
+  .mast {
+    top: 0.55rem;
+    left: 0.7rem;
+  }
+
+  h1 {
+    font-size: clamp(1.55rem, 8vw, 2.2rem);
+  }
+
+  .lede {
+    display: none;
+  }
+
+  .plate {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    width: auto;
+    padding: 0.62rem 0.68rem 0.58rem;
+    gap: 0.45rem;
+  }
+
+  .legend {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knife i,
+  .heat b {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .knife i,
+  .heat b {
+    transition: transform 160ms ease, left 160ms ease, width 240ms ease;
+  }
+}
